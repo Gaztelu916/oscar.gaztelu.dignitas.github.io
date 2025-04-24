@@ -1,0 +1,133 @@
+/* Estilos generales */
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+.banner {
+    background-color: #0d3b66;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+    border-radius: 5px;
+}
+
+.banner h1 {
+    color: #FAF0CA;
+    margin-bottom: 10px;
+}
+
+/* Estilos para el menú desplegable mejorado */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown:hover .dropdown-content,
+.dropdown:focus-within .dropdown-content {
+    display: block;
+}
+
+
+.dropdown-btn {
+    background-color: #F4D35E;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 16px;
+    /* Aseguramos que esté encima del contenido desplegable en caso de solapamiento */
+    position: relative;
+    z-index: 2;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 5px;
+    /* Evitamos el salto entre el botón y el contenido */
+    top: 100%; /* Justo debajo del botón */
+    left: 0;
+    /* Elimina esta línea: */
+    /* margin-top: 5px; */
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    border-bottom: 1px solid #ddd;
+}
+
+.dropdown-content a:hover {
+    background-color: #ddd;
+}
+
+.dropdown:hover .dropdown-btn {
+    background-color: #d8ac0b;
+}
+
+/* Estilos generales para el contenido principal */
+.main-content {
+    padding: 20px;
+}
+
+/* Estilos para las secciones (comunes a todas las páginas) */
+.section {
+    margin-bottom: 30px;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: white;
+}
+
+h2 {
+    color: #333;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+/* Estilos para el footer */
+footer {
+    text-align: center;
+    padding: 10px;
+    background-color: #0d3b66;
+    color: #FAF0CA;
+    border-radius: 5px;
+    margin-top: 20px;
+}
+
+/* Estilo para el botón de volver */
+.back-button {
+    display: inline-block;
+    padding: 8px 15px;
+    background-color: #F4D35E;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+.back-button:hover {
+    background-color: #d8ac0b;
+}
