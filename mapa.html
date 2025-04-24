@@ -9,8 +9,6 @@
   <link rel="stylesheet" href="./assets/css/styles.css" />
   <link rel="stylesheet" href="./assets/css/mapa.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-
-  <!-- ArcGIS API -->
   <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
   <script src="https://js.arcgis.com/4.29/"></script>
 
@@ -30,9 +28,9 @@
     #infoPanel {
       position: absolute;
       top: 20px;
-      left: 20px;
+      right: 20px;
       z-index: 99;
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.95);
       padding: 10px 15px;
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -48,9 +46,17 @@
     #results {
       max-height: 200px;
       overflow-y: auto;
-      font-size: 14px;
     }
-    
+    #localizar {
+      margin-bottom: 10px;
+      width: 100%;
+      padding: 6px;
+      background-color: #007acc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -63,10 +69,10 @@
 
   <div class="main-content">
     <a href="index.html" class="back-button"><i class="fas fa-arrow-left"></i> Volver al inicio</a>
-
     <div class="map-container">
       <div id="infoPanel">
-        <input type="text" id="search" placeholder="Buscar por nombre de fuente" />
+        <button id="localizar">📍 Ver fuentes cerca de mí</button>
+        <input type="text" id="search" placeholder="Buscar por ubicación" />
         <div id="results"></div>
       </div>
       <div id="mapa"></div>
@@ -83,115 +89,174 @@
       "esri/views/MapView",
       "esri/layers/MapImageLayer",
       "esri/rest/query",
+      "esri/rest/support/Query",
       "esri/core/reactiveUtils",
-    ], function (Map, MapView, MapImageLayer, query, reactiveUtils) {
-      // Crear un mapa base
-      const map = new Map({
-        basemap: "streets",
-      });
+      "esri/geometry/Point",
+      "esri/Graphic",
+      "esri/geometry/support/webMercatorUtils"
+    ], function (Map, MapView, MapImageLayer, query, Query, reactiveUtils, Point, Graphic, webMercatorUtils) {
+      const map = new Map({ basemap: "streets" });
 
-      // Añadir la capa desde el servicio de ArcGIS
       const layer = new MapImageLayer({
         url: "https://sigma.madrid.es/hosted/rest/services/MEDIO_AMBIENTE/FUENTES_DE_AGUA/MapServer",
       });
       map.add(layer);
 
-      // Crear la vista del mapa
-      const view = new MapView({
-        container: "mapa",
-        map: map,
-        center: [-3.7038, 40.4168], // Centro de Madrid
-        zoom: 12,
-      });
-
-     intreactiveUtils.watch(() => view.extent, () => {
-        view.extent = view.extent;
-      });
-
-      // URL del servicio para consultas
       const queryUrl = "https://sigma.madrid.es/hosted/rest/services/MEDIO_AMBIENTE/FUENTES_DE_AGUA/MapServer/0";
 
-      // Manejar clics en el mapa para consultar fuentes
-      view.on("click", function (event) {
-        const queryParams = {
-          where: "1=1",
-          geometry: event.mapPoint,
-          spatialRelationship: "intersects",
-          outFields: ["*"],
-          returnGeometry: true,
-        };
+      let view;
 
-        query.executeQuery(queryUrl, queryParams).then(function (result) {
-          const resultsDiv = document.getElementById("results");
-          resultsDiv.innerHTML = "";
-          if (result.features.length > 0) {
-            result.features.forEach(function (feature) {
-              const attributes = feature.attributes;
-              let info = "<b>Fuente encontrada:</b><br>";
-              for (let key in attributes) {
-                info += `${key}: ${attributes[key]}<br>`;
-              }
-              resultsDiv.innerHTML += info + "<hr>";
-            });
-          } else {
-            resultsDiv.innerHTML = "No se encontraron fuentes en esta ubicación.";
-          }
-        }).catch(function (error) {
-          console.error("Error en la consulta: ", error);
-          document.getElementById("results").innerHTML = "Error al realizar la consulta.";
+      function createMap(center) {
+        view = new MapView({
+          container: "mapa",
+          map: map,
+          center: center,
+          zoom: 14,
         });
-      });
 
-      // Manejar búsqueda por nombre
-      const searchInput = document.getElementById("search");
-      reactiveUtils.watch(
-        () => searchInput.value,
-        (value) => {
-          if (value.length < 3) {
-            document.getElementById("results").innerHTML = "";
-            return;
-          }
-          const queryParams = {
-            where: `NOMBRE LIKE '%${value}%'`,
+        setupInteracciones();
+      }
+
+      function setupInteracciones() {
+        view.on("click", function (event) {
+          const queryParams = new Query({
+            geometry: event.mapPoint,
+            spatialRelationship: "intersects",
             outFields: ["*"],
             returnGeometry: true,
-          };
+          });
 
-          query.executeQuery(queryUrl, queryParams).then(function (result) {
+          query.executeQueryJSON(queryUrl, queryParams).then(function (result) {
             const resultsDiv = document.getElementById("results");
             resultsDiv.innerHTML = "";
             if (result.features.length > 0) {
               result.features.forEach(function (feature) {
                 const attributes = feature.attributes;
-                let info = `<b>${attributes.NOMBRE}</b><br>`;
+                const geometry = feature.geometry;
+                let info = "<b>Fuente encontrada:</b><br>";
                 for (let key in attributes) {
-                  if (key !== "NOMBRE") {
-                    info += `${key}: ${attributes[key]}<br>`;
-                  }
+                  info += `${key}: ${attributes[key]}<br>`;
+                }
+                if (geometry) {
+                  info += `<b>Ubicación:</b><br>Lat: ${geometry.y.toFixed(5)}, Lon: ${geometry.x.toFixed(5)}<br>`;
                 }
                 resultsDiv.innerHTML += info + "<hr>";
               });
             } else {
-              resultsDiv.innerHTML = "No se encontraron fuentes con ese nombre.";
+              resultsDiv.innerHTML = "No se encontraron fuentes en esta ubicación.";
             }
-          }).catch(function (error) {
-            console.error("Error en la búsqueda: ", error);
-            document.getElementById("results").innerHTML = "Error al realizar la búsqueda.";
           });
-        },
-        { initial: true }
-      );
+        });
 
-      // Manejar errores de carga del mapa
-      view.when(
-        function () {
-          console.log("Mapa cargado exitosamente");
-        },
-        function (error) {
-          console.error("Error al cargar el mapa: ", error);
-          document.getElementById("results").innerHTML = "Error al cargar el mapa.";
+        document.getElementById("localizar").addEventListener("click", localizarYBuscarFuentes);
+
+        const searchInput = document.getElementById("search");
+        reactiveUtils.watch(
+          () => searchInput.value,
+          (value) => {
+            if (value.length < 3) {
+              document.getElementById("results").innerHTML = "";
+              return;
+            }
+
+            const queryParams = new Query({
+              where: `UPPER(NOMBRE) LIKE '%${value.toUpperCase()}%'`,
+              outFields: ["*"],
+              returnGeometry: true,
+            });
+
+            query.executeQueryJSON(queryUrl, queryParams).then(function (result) {
+              const resultsDiv = document.getElementById("results");
+              resultsDiv.innerHTML = "";
+              if (result.features.length > 0) {
+                result.features.forEach(function (feature) {
+                  const attributes = feature.attributes;
+                  let info = `<b>${attributes.NOMBRE}</b><br>`;
+                  for (let key in attributes) {
+                    if (key !== "NOMBRE") {
+                      info += `${key}: ${attributes[key]}<br>`;
+                    }
+                  }
+                  resultsDiv.innerHTML += info + "<hr>";
+                });
+              } else {
+                resultsDiv.innerHTML = "No se encontraron fuentes con ese nombre.";
+              }
+            });
+          },
+          { initial: true }
+        );
+      }
+
+      function localizarYBuscarFuentes() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function (position) {
+            const point = new Point({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              spatialReference: { wkid: 4326 }
+            });
+
+            const mercator = webMercatorUtils.geographicToWebMercator(point);
+
+            view.graphics.removeAll();
+            view.graphics.add(new Graphic({
+              geometry: mercator,
+              symbol: {
+                type: "simple-marker",
+                color: "blue",
+                size: "12px",
+                outline: { color: "white", width: 1 }
+              }
+            }));
+
+            view.goTo({ target: mercator, zoom: 15 });
+
+            const q = new Query({
+              geometry: mercator,
+              spatialRelationship: "intersects",
+              distance: 300,
+              units: "meters",
+              outFields: ["*"],
+              returnGeometry: true
+            });
+
+            query.executeQueryJSON(queryUrl, q).then(function (result) {
+              const resultsDiv = document.getElementById("results");
+              resultsDiv.innerHTML = "";
+              if (result.features.length > 0) {
+                result.features.forEach((feature) => {
+                  const attributes = feature.attributes;
+                  let info = `<b>${attributes.NOMBRE}</b><br>`;
+                  for (let key in attributes) {
+                    if (key !== "NOMBRE") {
+                      info += `${key}: ${attributes[key]}<br>`;
+                    }
+                  }
+                  resultsDiv.innerHTML += info + "<hr>";
+                });
+              } else {
+                resultsDiv.innerHTML = "No se encontraron fuentes cerca de ti.";
+              }
+            });
+          }, function (err) {
+            alert("No se pudo obtener tu ubicación: " + err.message);
+          });
+        } else {
+          alert("Tu navegador no soporta geolocalización.");
         }
-      );
+      }
+
+      // Intentar centrar en la ubicación del usuario desde el inicio
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function (position) {
+          createMap([position.coords.longitude, position.coords.latitude]);
+        }, function () {
+          createMap([-3.7038, 40.4168]); // fallback: Madrid
+        });
+      } else {
+        createMap([-3.7038, 40.4168]); // fallback: Madrid
+      }
     });
   </script>
 </body>
